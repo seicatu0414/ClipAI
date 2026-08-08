@@ -1,0 +1,1 @@
+"""ClipAI application package."""

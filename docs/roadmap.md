@@ -1,0 +1,86 @@
+# Roadmap
+
+## v0.1 — Local Transcription
+
+Goal: convert one local or YouTube video into a timestamped transcript.
+
+Deliverables:
+
+- Docker-based local environment,
+- FFmpeg preprocessing,
+- faster-whisper on the RTX 4070 Ti,
+- persisted transcript and segments,
+- reproducible command or API entry point.
+
+Exit condition:
+
+A multi-hour Japanese stream can be transcribed reliably and inspected by timestamp.
+
+## v0.2 — Basic Event Detection
+
+Goal: find potentially interesting regions without personalizing them yet.
+
+Deliverables:
+
+- audio and transcript feature extraction,
+- initial event taxonomy,
+- event timeline,
+- explainable rule or model output.
+
+Exit condition:
+
+The system reduces a long stream to a smaller set of review regions without using full-video LLM analysis.
+
+## v0.3 — StreamerKnowledge
+
+Goal: build versioned knowledge from selected historical content.
+
+Deliverables:
+
+- historical content selection,
+- evidence-backed knowledge schema,
+- configurable LLM provider,
+- knowledge version history.
+
+Exit condition:
+
+A human familiar with the streamer considers the generated knowledge broadly recognizable and evidence-based.
+
+## v0.4 — Personalized Clip Candidates
+
+Goal: rank variable-length candidates using both event evidence and StreamerKnowledge.
+
+Deliverables:
+
+- candidate window construction,
+- multidimensional category scores,
+- overall ranking,
+- reasons and evidence.
+
+Exit condition:
+
+A four-hour stream produces approximately 20–30 reviewable candidates.
+
+## v0.5 — Feedback Learning
+
+Goal: use ◎ / ○ / × feedback to improve future ranking.
+
+Deliverables:
+
+- feedback UI or endpoint,
+- reason tags,
+- preference update logic,
+- before-and-after evaluation.
+
+Exit condition:
+
+Repeated use measurably improves candidate acceptance rate.
+
+## Deferred
+
+- vision analysis,
+- automatic editing,
+- automatic posting,
+- real-time processing,
+- Twitch and Kick,
+- cloud deployment.
