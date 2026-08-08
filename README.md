@@ -65,3 +65,38 @@ ruff format --check .
 mypy src tests
 pytest
 ```
+
+## v0.1 Local Transcription
+
+Place local media under `data/` (mounted as `/data` in the containers), or use a public YouTube video URL. Start the CPU-safe stack with:
+
+```powershell
+docker compose up --build
+```
+
+For NVIDIA GPU acceleration, use the GPU override:
+
+```powershell
+docker compose -f compose.yaml -f compose.gpu.yaml up --build
+```
+
+Submit and inspect a job through the API:
+
+```powershell
+$job = Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/transcription-jobs `
+  -ContentType application/json -Body '{"source":"/data/example.mp4"}'
+Invoke-RestMethod http://localhost:8000/v1/transcription-jobs/$($job.id)
+```
+
+After completion, inspect ordered segments without loading the full transcript:
+
+```powershell
+Invoke-RestMethod "http://localhost:8000/v1/transcripts/$($job.transcript_id)/segments?offset=0&limit=100"
+```
+
+YouTube smoke test:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/transcription-jobs `
+  -ContentType application/json -Body '{"source":"https://www.youtube.com/watch?v=VIDEO_ID"}'
+```

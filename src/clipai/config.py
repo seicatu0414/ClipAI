@@ -1,4 +1,6 @@
 from functools import lru_cache
+from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,6 +19,12 @@ class Settings(BaseSettings):
         default="postgresql://clipai:clipai@localhost:5432/clipai",
         repr=False,
     )
+    media_root: Path = Path("data")
+    model_size: str = "large-v3"
+    language: str = "ja"
+    device: Literal["auto", "cuda", "cpu"] = "auto"
+    cpu_fallback: bool = True
+    worker_poll_interval_seconds: float = Field(default=2.0, gt=0)
 
 
 @lru_cache

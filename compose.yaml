@@ -25,6 +25,9 @@ services:
       CLIPAI_ENVIRONMENT: ${CLIPAI_ENVIRONMENT:-local}
       CLIPAI_LOG_LEVEL: ${CLIPAI_LOG_LEVEL:-INFO}
       CLIPAI_DATABASE_URL: ${CLIPAI_DATABASE_URL:-postgresql://clipai:clipai@db:5432/clipai}
+      CLIPAI_MEDIA_ROOT: /data
+    volumes:
+      - ${CLIPAI_MEDIA_ROOT:-./data}:/data
     ports:
       - "8000:8000"
     depends_on:
@@ -45,6 +48,14 @@ services:
       CLIPAI_ENVIRONMENT: ${CLIPAI_ENVIRONMENT:-local}
       CLIPAI_LOG_LEVEL: ${CLIPAI_LOG_LEVEL:-INFO}
       CLIPAI_DATABASE_URL: ${CLIPAI_DATABASE_URL:-postgresql://clipai:clipai@db:5432/clipai}
+      CLIPAI_MEDIA_ROOT: /data
+      CLIPAI_MODEL_SIZE: ${CLIPAI_MODEL_SIZE:-large-v3}
+      CLIPAI_LANGUAGE: ${CLIPAI_LANGUAGE:-ja}
+      CLIPAI_DEVICE: ${CLIPAI_DEVICE:-auto}
+      CLIPAI_CPU_FALLBACK: ${CLIPAI_CPU_FALLBACK:-true}
+      CLIPAI_WORKER_POLL_INTERVAL_SECONDS: ${CLIPAI_WORKER_POLL_INTERVAL_SECONDS:-2}
+    volumes:
+      - ${CLIPAI_MEDIA_ROOT:-./data}:/data
     depends_on:
       db:
         condition: service_healthy

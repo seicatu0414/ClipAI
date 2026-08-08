@@ -30,6 +30,8 @@ Do not use it as a diary.
 - Use deterministic or lightweight filtering before LLM reasoning.
 - Use a simple database-backed job mechanism before adopting separate queue infrastructure.
 - Store StreamerKnowledge as versioned, evidence-backed knowledge.
+- Transcription selects CUDA automatically when available and uses configurable CPU fallback.
+- Local media passed to Docker is placed in a shared `data/` directory; large media is never stored in PostgreSQL.
 
 ## Documentation
 
