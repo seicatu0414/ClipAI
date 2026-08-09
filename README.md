@@ -162,3 +162,16 @@ The worker constructs and deduplicates 15–120 second windows from inexpensive 
 signals, targeting 25 by default. Only the reduced set is sent to the LLM with relevant
 evidence-backed StreamerKnowledge. Results include eight category scores, overall rank,
 confidence, reasons, event IDs, and exact analysis-version metadata.
+
+## v0.5 Feedback Learning
+
+Submit ◎, ○, or × to `POST /v1/candidates/{candidate_id}/feedback` with optional
+reason tags and a note. Each response creates a separate feedback record and an immutable
+streamer preference version. Future candidate jobs pin the current version and apply its
+transparent eight-category weights over the unchanged global score composition.
+
+List versions with `GET /v1/streamers/{streamer_id}/preferences`, roll back by appending
+a version with `POST /v1/streamers/{streamer_id}/preferences/rollback`, and compare two
+versions with `GET /v1/streamers/{streamer_id}/preferences/compare`. For example, an ◎
+on a humor-heavy candidate tagged `humor` changes that weight from 1.0000 to 1.0810.
+Notes and `other` tags are retained but do not alter weights in v0.5.

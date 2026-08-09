@@ -23,6 +23,25 @@ class BalancedCandidateScorer:
         return round(ordered[0] * 0.7 + ordered[1] * 0.3, 4)
 
 
+class WeightedCandidateScorer:
+    def __init__(self, weights: dict[CandidateCategory, float]) -> None:
+        self._weights = weights
+
+    def score(self, scores: dict[CandidateCategory, float]) -> float:
+        weighted = sorted(
+            (
+                score * self._weights.get(category, 1.0)
+                for category, score in scores.items()
+            ),
+            reverse=True,
+        )
+        normalization = max(self._weights.values(), default=1.0)
+        return round(
+            min(1.0, (weighted[0] * 0.7 + weighted[1] * 0.3) / normalization),
+            4,
+        )
+
+
 @dataclass(frozen=True)
 class RankingResult:
     category_scores: dict[CandidateCategory, float]

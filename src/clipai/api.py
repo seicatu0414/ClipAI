@@ -23,6 +23,15 @@ from clipai.events.configuration import event_configuration
 from clipai.events.detectors import JapaneseTranscriptRuleDetector
 from clipai.events.domain import DetectedEvent, EventDetectionJob, JsonValue
 from clipai.events.repository import EventRepository
+from clipai.feedback.domain import (
+    CandidateFeedback,
+    FeedbackRating,
+    FeedbackReasonTag,
+    PreferenceEvaluation,
+    PreferenceVersion,
+)
+from clipai.feedback.learning import evaluate_preferences
+from clipai.feedback.repository import FeedbackRepository
 from clipai.knowledge.configuration import knowledge_configuration
 from clipai.knowledge.domain import (
     Evidence,
@@ -278,6 +287,7 @@ class CandidateJobResponse(BaseModel):
     transcript_id: UUID
     event_detection_job_id: UUID
     knowledge_version_id: UUID
+    preference_version_id: UUID | None
     status: str
     progress: int
     pipeline_version: str
@@ -295,6 +305,7 @@ class CandidateJobResponse(BaseModel):
 
 
 class CandidateResponse(BaseModel):
+    id: UUID
     rank: int
     start_seconds: float
     end_seconds: float
@@ -308,6 +319,7 @@ class CandidateResponse(BaseModel):
     @classmethod
     def from_candidate(cls, candidate: ClipCandidate) -> "CandidateResponse":
         return cls(
+            id=_required_candidate_id(candidate),
             rank=candidate.rank,
             start_seconds=candidate.start_seconds,
             end_seconds=candidate.end_seconds,
@@ -322,6 +334,96 @@ class CandidateResponse(BaseModel):
         )
 
 
+class CreateFeedbackRequest(BaseModel):
+    rating: Literal["◎", "○", "×"]
+    reason_tags: list[FeedbackReasonTag] = Field(default_factory=list)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class FeedbackResponse(BaseModel):
+    id: UUID
+    candidate_id: UUID
+    streamer_id: UUID
+    rating: str
+    reason_tags: list[str]
+    note: str | None
+    preference_version_id: UUID
+    created_at: datetime
+
+    @classmethod
+    def from_feedback(cls, feedback: CandidateFeedback) -> "FeedbackResponse":
+        symbols = {
+            FeedbackRating.EXCELLENT: "◎",
+            FeedbackRating.USABLE: "○",
+            FeedbackRating.REJECT: "×",
+        }
+        return cls(
+            id=feedback.id,
+            candidate_id=feedback.candidate_id,
+            streamer_id=feedback.streamer_id,
+            rating=symbols[feedback.rating],
+            reason_tags=[tag.value for tag in feedback.reason_tags],
+            note=feedback.note,
+            preference_version_id=feedback.preference_version_id,
+            created_at=feedback.created_at,
+        )
+
+
+class PreferenceResponse(BaseModel):
+    id: UUID
+    streamer_id: UUID
+    version_number: int
+    previous_version_id: UUID | None
+    source_feedback_id: UUID | None
+    rollback_of_version_id: UUID | None
+    category_weights: dict[str, float]
+    explanation: list[str]
+    created_at: datetime
+
+    @classmethod
+    def from_preference(cls, preference: PreferenceVersion) -> "PreferenceResponse":
+        return cls(
+            id=preference.id,
+            streamer_id=preference.streamer_id,
+            version_number=preference.version_number,
+            previous_version_id=preference.previous_version_id,
+            source_feedback_id=preference.source_feedback_id,
+            rollback_of_version_id=preference.rollback_of_version_id,
+            category_weights={
+                key.value: value for key, value in preference.category_weights.items()
+            },
+            explanation=list(preference.explanation),
+            created_at=preference.created_at,
+        )
+
+
+class RollbackPreferenceRequest(BaseModel):
+    target_version_id: UUID
+
+
+class EvaluationResultResponse(BaseModel):
+    preference_version_id: UUID
+    ranked_candidate_ids: list[UUID]
+    average_accepted_rank: float | None
+    precision_at_20: float | None
+    precision_at_30: float | None
+
+    @classmethod
+    def from_evaluation(cls, result: PreferenceEvaluation) -> "EvaluationResultResponse":
+        return cls(
+            preference_version_id=result.preference_version_id,
+            ranked_candidate_ids=list(result.ranked_candidate_ids),
+            average_accepted_rank=result.average_accepted_rank,
+            precision_at_20=result.precision_at_20,
+            precision_at_30=result.precision_at_30,
+        )
+
+
+class PreferenceComparisonResponse(BaseModel):
+    before: EvaluationResultResponse
+    after: EvaluationResultResponse
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
@@ -330,7 +432,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="ClipAI API", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="ClipAI API", version="0.5.0", lifespan=lifespan)
 
 
 def _repository() -> TranscriptionRepository:
@@ -347,6 +449,10 @@ def _knowledge_repository() -> KnowledgeRepository:
 
 def _candidate_repository() -> CandidateRepository:
     return CandidateRepository(get_settings().database_url)
+
+
+def _feedback_repository() -> FeedbackRepository:
+    return FeedbackRepository(get_settings().database_url)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -491,7 +597,10 @@ def get_current_knowledge(streamer_id: UUID) -> KnowledgeVersionResponse:
 @app.post("/v1/candidate-jobs", response_model=CandidateJobResponse, status_code=202)
 def create_candidate_job(request: CreateCandidateJobRequest) -> CandidateJobResponse:
     settings = get_settings()
+    if _knowledge_repository().get_streamer(request.streamer_id) is None:
+        raise HTTPException(status_code=404, detail="streamer not found")
     try:
+        preference = _feedback_repository().ensure_current_preference(request.streamer_id)
         job = _candidate_repository().create_job(
             request.streamer_id,
             request.transcript_id,
@@ -500,6 +609,7 @@ def create_candidate_job(request: CreateCandidateJobRequest) -> CandidateJobResp
             model=settings.ollama_model,
             prompt_version=PROMPT_VERSION,
             configuration=candidate_configuration(settings),
+            preference_version_id=preference.id,
         )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -526,3 +636,100 @@ def list_candidates(job_id: UUID) -> list[CandidateResponse]:
         CandidateResponse.from_candidate(item)
         for item in repository.list_candidates(job_id)
     ]
+
+
+def _required_candidate_id(candidate: ClipCandidate) -> UUID:
+    if candidate.id is None:
+        raise RuntimeError("persisted candidate has no ID")
+    return candidate.id
+
+
+@app.post("/v1/candidates/{candidate_id}/feedback", response_model=FeedbackResponse)
+def create_feedback(
+    candidate_id: UUID,
+    request: CreateFeedbackRequest,
+) -> FeedbackResponse:
+    ratings = {
+        "◎": FeedbackRating.EXCELLENT,
+        "○": FeedbackRating.USABLE,
+        "×": FeedbackRating.REJECT,
+    }
+    try:
+        feedback = _feedback_repository().add_feedback(
+            candidate_id,
+            ratings[request.rating],
+            tuple(request.reason_tags),
+            request.note,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return FeedbackResponse.from_feedback(feedback)
+
+
+@app.get(
+    "/v1/candidates/{candidate_id}/feedback",
+    response_model=list[FeedbackResponse],
+)
+def list_feedback(candidate_id: UUID) -> list[FeedbackResponse]:
+    return [
+        FeedbackResponse.from_feedback(item)
+        for item in _feedback_repository().list_feedback(candidate_id)
+    ]
+
+
+@app.get(
+    "/v1/streamers/{streamer_id}/preferences",
+    response_model=list[PreferenceResponse],
+)
+def list_preferences(streamer_id: UUID) -> list[PreferenceResponse]:
+    return [
+        PreferenceResponse.from_preference(item)
+        for item in _feedback_repository().list_preferences(streamer_id)
+    ]
+
+
+@app.post(
+    "/v1/streamers/{streamer_id}/preferences/rollback",
+    response_model=PreferenceResponse,
+)
+def rollback_preference(
+    streamer_id: UUID,
+    request: RollbackPreferenceRequest,
+) -> PreferenceResponse:
+    try:
+        preference = _feedback_repository().rollback(
+            streamer_id, request.target_version_id
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return PreferenceResponse.from_preference(preference)
+
+
+@app.get(
+    "/v1/streamers/{streamer_id}/preferences/compare",
+    response_model=PreferenceComparisonResponse,
+)
+def compare_preferences(
+    streamer_id: UUID,
+    before_version_id: UUID,
+    after_version_id: UUID,
+) -> PreferenceComparisonResponse:
+    repository = _feedback_repository()
+    before = repository.get_preference(before_version_id)
+    after = repository.get_preference(after_version_id)
+    if (
+        before is None
+        or after is None
+        or before.streamer_id != streamer_id
+        or after.streamer_id != streamer_id
+    ):
+        raise HTTPException(status_code=404, detail="preference version not found")
+    candidates = repository.evaluation_candidates(streamer_id)
+    return PreferenceComparisonResponse(
+        before=EvaluationResultResponse.from_evaluation(
+            evaluate_preferences(candidates, before.category_weights, before.id)
+        ),
+        after=EvaluationResultResponse.from_evaluation(
+            evaluate_preferences(candidates, after.category_weights, after.id)
+        ),
+    )

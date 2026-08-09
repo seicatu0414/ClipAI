@@ -88,3 +88,11 @@ baseline succeeds when it yields 20–30 reviewable candidates, every duration i
 seconds, explanations cite stored evidence, and no pair reaches the configured overlap
 threshold. Compare by candidate job ID; pinned inputs and analysis-version metadata make
 each run reproducible. Human usefulness remains the deciding measure.
+
+## v0.5 Feedback Comparison
+
+Review candidates, then call `GET /v1/streamers/{streamer_id}/preferences/compare` with
+`before_version_id` and `after_version_id`. Record accepted average rank and
+Precision@20/30 on the same reviewed set. Promote a newer preference only when acceptance
+ranking improves without a qualitative regression. Notes and `other` are stored but do
+not affect weights in this baseline.

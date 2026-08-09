@@ -35,6 +35,7 @@ class CandidateRepository:
         model: str,
         prompt_version: str,
         configuration: dict[str, JsonValue],
+        preference_version_id: UUID | None = None,
     ) -> CandidateJob:
         with connect(self._database_url) as connection, connection.cursor() as cursor:
             cursor.execute(
@@ -46,6 +47,16 @@ class CandidateRepository:
             )
             if cursor.fetchone() is None:
                 raise ValueError("transcript is not registered to this streamer")
+            if preference_version_id is not None:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM streamer_preference_versions
+                    WHERE id = %s AND streamer_id = %s
+                    """,
+                    (preference_version_id, streamer_id),
+                )
+                if cursor.fetchone() is None:
+                    raise ValueError("preference version does not belong to streamer")
             cursor.execute(
                 """
                 SELECT id FROM event_detection_jobs
@@ -72,10 +83,10 @@ class CandidateRepository:
                 INSERT INTO candidate_jobs (
                     streamer_id, transcript_id, event_detection_job_id,
                     knowledge_version_id, pipeline_version, provider, model,
-                    prompt_version, configuration
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    prompt_version, configuration, preference_version_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, streamer_id, transcript_id, event_detection_job_id,
-                    knowledge_version_id, status, progress, pipeline_version,
+                    knowledge_version_id, preference_version_id, status, progress, pipeline_version,
                     provider, model, prompt_version, configuration, error
                 """,
                 (
@@ -88,6 +99,7 @@ class CandidateRepository:
                     model,
                     prompt_version,
                     Jsonb(configuration),
+                    preference_version_id,
                 ),
             )
             row = _required(cursor.fetchone())
@@ -99,7 +111,7 @@ class CandidateRepository:
             cursor.execute(
                 """
                 SELECT id, streamer_id, transcript_id, event_detection_job_id,
-                    knowledge_version_id, status, progress, pipeline_version,
+                    knowledge_version_id, preference_version_id, status, progress, pipeline_version,
                     provider, model, prompt_version, configuration, error
                 FROM candidate_jobs WHERE id = %s
                 """,
@@ -121,7 +133,8 @@ class CandidateRepository:
                     started_at = now(), updated_at = now()
                 FROM next_job WHERE j.id = next_job.id
                 RETURNING j.id, j.streamer_id, j.transcript_id,
-                    j.event_detection_job_id, j.knowledge_version_id, j.status,
+                    j.event_detection_job_id, j.knowledge_version_id,
+                    j.preference_version_id, j.status,
                     j.progress, j.pipeline_version, j.provider, j.model,
                     j.prompt_version, j.configuration, j.error
                 """
@@ -214,6 +227,27 @@ class CandidateRepository:
                 )
         return result
 
+    def load_preference_weights(
+        self,
+        preference_version_id: UUID | None,
+    ) -> dict[CandidateCategory, float]:
+        if preference_version_id is None:
+            return {category: 1.0 for category in CandidateCategory}
+        with connect(self._database_url) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT category_weights FROM streamer_preference_versions WHERE id = %s
+                """,
+                (preference_version_id,),
+            )
+            row = cursor.fetchone()
+        if row is None:
+            raise ValueError("pinned preference version does not exist")
+        return {
+            CandidateCategory(key): float(value)
+            for key, value in row[0].items()
+        }
+
     def segments_for(
         self,
         transcript_id: UUID,
@@ -278,7 +312,7 @@ class CandidateRepository:
         with connect(self._database_url) as connection, connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT rank, start_seconds, end_seconds, category_scores,
+                SELECT id, rank, start_seconds, end_seconds, category_scores,
                     overall_score, confidence, reasons, event_ids,
                     knowledge_observation_ids
                 FROM clip_candidates WHERE candidate_job_id = %s ORDER BY rank
@@ -291,12 +325,11 @@ class CandidateRepository:
                 row[0],
                 row[1],
                 row[2],
-                {CandidateCategory(key): value for key, value in row[3].items()},
-                row[4],
-                row[5],
-                tuple(row[6]),
-                tuple(UUID(value) for value in row[7]),
+                row[3],
+                {CandidateCategory(key): value for key, value in row[4].items()},
+                row[5], row[6], tuple(row[7]),
                 tuple(UUID(value) for value in row[8]),
+                tuple(UUID(value) for value in row[9]),
                 (),
             )
             for row in rows
@@ -323,7 +356,7 @@ def _required(row: tuple[Any, ...] | None) -> tuple[Any, ...]:
 
 def _map_job(row: tuple[Any, ...]) -> CandidateJob:
     return CandidateJob(
-        row[0], row[1], row[2], row[3], row[4],
-        CandidateJobStatus(row[5]), row[6], row[7], row[8],
-        row[9], row[10], row[11], row[12],
+        row[0], row[1], row[2], row[3], row[4], row[5],
+        CandidateJobStatus(row[6]), row[7], row[8], row[9],
+        row[10], row[11], row[12], row[13],
     )

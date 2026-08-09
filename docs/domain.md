@@ -130,6 +130,13 @@ It contains:
 
 Feedback changes future ranking preferences but does not rewrite historical candidate results.
 
+## RankingPreference
+
+An immutable streamer-specific set of category weights over the replaceable global ranking
+logic. Each version records its predecessor, source feedback or rollback target, weights,
+and explanation. Candidate analyses pin the version they used. Free-text notes are retained
+but are not automatically interpreted in v0.5.
+
 ## Ownership Summary
 
 - Streamer owns long-term identity.

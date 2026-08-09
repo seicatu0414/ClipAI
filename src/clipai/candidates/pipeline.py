@@ -9,10 +9,10 @@ from clipai.candidates.domain import (
     ClipCandidate,
 )
 from clipai.candidates.ranking import (
-    BalancedCandidateScorer,
     CandidateScorer,
     LlmCandidateRanker,
     RankingResult,
+    WeightedCandidateScorer,
     relevant_knowledge,
 )
 from clipai.candidates.repository import CandidateRepository
@@ -49,7 +49,7 @@ class CandidatePipeline:
         self._repository = repository
         self._provider_factory = provider_factory
         self._prompt_root = prompt_root
-        self._scorer = scorer or BalancedCandidateScorer()
+        self._scorer = scorer
 
     def process(self, job: CandidateJob) -> None:
         try:
@@ -76,6 +76,9 @@ class CandidatePipeline:
                 job.model,
                 self._prompt_root / "candidate_ranking" / f"{job.prompt_version}.md",
             )
+            scorer = self._scorer or WeightedCandidateScorer(
+                self._repository.load_preference_weights(job.preference_version_id)
+            )
             ranked: list[ClipCandidate] = []
             maximum = _integer(config, "maximum_knowledge_observations")
             for index, window in enumerate(windows):
@@ -90,11 +93,12 @@ class CandidatePipeline:
                 start, end = _extended_window(window, result, config)
                 ranked.append(
                     ClipCandidate(
+                        None,
                         0,
                         start,
                         end,
                         result.category_scores,
-                        self._scorer.score(result.category_scores),
+                        scorer.score(result.category_scores),
                         result.confidence,
                         result.reasons,
                         tuple(item.id for item in window.events),
@@ -146,7 +150,7 @@ def _rank_and_suppress(
         if all(overlap_ratio(proxy, _proxy(item)) < overlap_threshold for item in selected):
             selected.append(candidate)
     return [
-        ClipCandidate(index, item.start_seconds, item.end_seconds, item.category_scores,
+        ClipCandidate(item.id, index, item.start_seconds, item.end_seconds, item.category_scores,
                       item.overall_score, item.confidence, item.reasons,
                       item.event_ids, item.knowledge_observation_ids, item.knowledge)
         for index, item in enumerate(selected, start=1)
