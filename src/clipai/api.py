@@ -569,7 +569,7 @@ def create_knowledge_job(request: CreateKnowledgeJobRequest) -> KnowledgeJobResp
         request.streamer_id,
         provider="ollama",
         model=settings.ollama_model,
-        prompt_version="v1",
+        prompt_version="v2",
         configuration=knowledge_configuration(settings),
     )
     return KnowledgeJobResponse.from_job(job)
@@ -733,3 +733,4 @@ def compare_preferences(
             evaluate_preferences(candidates, after.category_weights, after.id)
         ),
     )
+

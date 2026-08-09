@@ -68,13 +68,13 @@ pytest
 
 ## v0.1 Local Transcription
 
-Place local media under `data/` (mounted as `/data` in the containers), or use a public YouTube video URL. Start the CPU-safe stack with:
+Place local media under `data/` (mounted as `/data` in the containers), or use a public YouTube video URL. On the primary NVIDIA workstation, `compose.override.yaml` is loaded automatically, so the normal command enables GPU acceleration for both the Worker and Ollama:
 
 ```powershell
 docker compose up --build
 ```
 
-For NVIDIA GPU acceleration, use the GPU override:
+On another machine where GPU support should be selected explicitly, omit `compose.override.yaml` and use the portable GPU override:
 
 ```powershell
 docker compose -f compose.yaml -f compose.gpu.yaml up --build
@@ -175,3 +175,4 @@ a version with `POST /v1/streamers/{streamer_id}/preferences/rollback`, and comp
 versions with `GET /v1/streamers/{streamer_id}/preferences/compare`. For example, an ◎
 on a humor-heavy candidate tagged `humor` changes that weight from 1.0000 to 1.0810.
 Notes and `other` tags are retained but do not alter weights in v0.5.
+

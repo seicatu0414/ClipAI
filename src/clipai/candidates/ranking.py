@@ -144,12 +144,11 @@ def parse_ranking_response(response: str) -> RankingResult:
 def _probability(value: object, name: str) -> float:
     if not isinstance(value, int | float) or isinstance(value, bool):
         raise ValueError(f"{name} must be numeric")
-    if not 0 <= float(value) <= 1:
-        raise ValueError(f"{name} must be between zero and one")
-    return float(value)
+    return max(0.0, min(float(value), 1.0))
 
 
 def _extension(value: object) -> float:
     if not isinstance(value, int | float) or isinstance(value, bool):
         raise ValueError("extensions must be numeric")
     return max(0.0, min(float(value), 30.0))
+
