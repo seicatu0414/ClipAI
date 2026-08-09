@@ -9,6 +9,13 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 
+from clipai.candidates.configuration import (
+    PIPELINE_VERSION,
+    PROMPT_VERSION,
+    candidate_configuration,
+)
+from clipai.candidates.domain import CandidateJob, ClipCandidate
+from clipai.candidates.repository import CandidateRepository
 from clipai.config import get_settings
 from clipai.database import apply_migrations, database_is_ready
 from clipai.domain import SourceSpec, TranscriptSegment, TranscriptionJob
@@ -260,6 +267,61 @@ class KnowledgeVersionResponse(BaseModel):
         )
 
 
+class CreateCandidateJobRequest(BaseModel):
+    streamer_id: UUID
+    transcript_id: UUID
+
+
+class CandidateJobResponse(BaseModel):
+    id: UUID
+    streamer_id: UUID
+    transcript_id: UUID
+    event_detection_job_id: UUID
+    knowledge_version_id: UUID
+    status: str
+    progress: int
+    pipeline_version: str
+    provider: str
+    model: str
+    prompt_version: str
+    configuration: dict[str, JsonValue]
+    error: str | None
+
+    @classmethod
+    def from_job(cls, job: CandidateJob) -> "CandidateJobResponse":
+        data = job.__dict__.copy()
+        data["status"] = job.status.value
+        return cls(**data)
+
+
+class CandidateResponse(BaseModel):
+    rank: int
+    start_seconds: float
+    end_seconds: float
+    category_scores: dict[str, float]
+    overall_score: float
+    confidence: float
+    reasons: list[str]
+    event_ids: list[UUID]
+    knowledge_observation_ids: list[UUID]
+
+    @classmethod
+    def from_candidate(cls, candidate: ClipCandidate) -> "CandidateResponse":
+        return cls(
+            rank=candidate.rank,
+            start_seconds=candidate.start_seconds,
+            end_seconds=candidate.end_seconds,
+            category_scores={
+                key.value: value for key, value in candidate.category_scores.items()
+            },
+            overall_score=candidate.overall_score,
+            confidence=candidate.confidence,
+            reasons=list(candidate.reasons),
+            event_ids=list(candidate.event_ids),
+            knowledge_observation_ids=list(candidate.knowledge_observation_ids),
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
@@ -268,7 +330,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="ClipAI API", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="ClipAI API", version="0.4.0", lifespan=lifespan)
 
 
 def _repository() -> TranscriptionRepository:
@@ -281,6 +343,10 @@ def _event_repository() -> EventRepository:
 
 def _knowledge_repository() -> KnowledgeRepository:
     return KnowledgeRepository(get_settings().database_url)
+
+
+def _candidate_repository() -> CandidateRepository:
+    return CandidateRepository(get_settings().database_url)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -420,3 +486,43 @@ def get_current_knowledge(streamer_id: UUID) -> KnowledgeVersionResponse:
     if version is None:
         raise HTTPException(status_code=404, detail="streamer knowledge not found")
     return KnowledgeVersionResponse.from_version(version)
+
+
+@app.post("/v1/candidate-jobs", response_model=CandidateJobResponse, status_code=202)
+def create_candidate_job(request: CreateCandidateJobRequest) -> CandidateJobResponse:
+    settings = get_settings()
+    try:
+        job = _candidate_repository().create_job(
+            request.streamer_id,
+            request.transcript_id,
+            pipeline_version=PIPELINE_VERSION,
+            provider="ollama",
+            model=settings.ollama_model,
+            prompt_version=PROMPT_VERSION,
+            configuration=candidate_configuration(settings),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return CandidateJobResponse.from_job(job)
+
+
+@app.get("/v1/candidate-jobs/{job_id}", response_model=CandidateJobResponse)
+def get_candidate_job(job_id: UUID) -> CandidateJobResponse:
+    job = _candidate_repository().get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="candidate job not found")
+    return CandidateJobResponse.from_job(job)
+
+
+@app.get(
+    "/v1/candidate-jobs/{job_id}/candidates",
+    response_model=list[CandidateResponse],
+)
+def list_candidates(job_id: UUID) -> list[CandidateResponse]:
+    repository = _candidate_repository()
+    if repository.get_job(job_id) is None:
+        raise HTTPException(status_code=404, detail="candidate job not found")
+    return [
+        CandidateResponse.from_candidate(item)
+        for item in repository.list_candidates(job_id)
+    ]

@@ -143,3 +143,22 @@ Example observation:
   "evidence": [{"segment_index": 42, "start_seconds": 315.2, "quote": "やった！"}]
 }
 ```
+
+## v0.4 Personalized Clip Candidates
+
+Create a candidate job after event detection and StreamerKnowledge are complete:
+
+```powershell
+$candidateJob = Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/candidate-jobs `
+  -ContentType application/json -Body (ConvertTo-Json @{
+    streamer_id = $streamer.id
+    transcript_id = $job.transcript_id
+  })
+Invoke-RestMethod http://localhost:8000/v1/candidate-jobs/$($candidateJob.id)
+Invoke-RestMethod http://localhost:8000/v1/candidate-jobs/$($candidateJob.id)/candidates
+```
+
+The worker constructs and deduplicates 15–120 second windows from inexpensive event
+signals, targeting 25 by default. Only the reduced set is sent to the LLM with relevant
+evidence-backed StreamerKnowledge. Results include eight category scores, overall rank,
+confidence, reasons, event IDs, and exact analysis-version metadata.

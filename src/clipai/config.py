@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     knowledge_max_historical_hours: float = Field(default=50.0, gt=0)
     knowledge_max_representative_streams: int = Field(default=10, ge=0, le=100)
     knowledge_chunk_characters: int = Field(default=12_000, ge=1_000)
+    candidate_target_count: int = Field(default=25, ge=1, le=30)
+    candidate_minimum_seconds: float = Field(default=15.0, ge=1)
+    candidate_maximum_seconds: float = Field(default=120.0, ge=15)
+    candidate_padding_before_seconds: float = Field(default=8.0, ge=0)
+    candidate_padding_after_seconds: float = Field(default=12.0, ge=0)
+    candidate_merge_gap_seconds: float = Field(default=8.0, ge=0)
+    candidate_overlap_threshold: float = Field(default=0.65, gt=0, le=1)
+    candidate_maximum_knowledge_observations: int = Field(default=5, ge=0, le=20)
 
 
 @lru_cache
