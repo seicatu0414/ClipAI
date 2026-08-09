@@ -32,6 +32,9 @@ Do not use it as a diary.
 - Store StreamerKnowledge as versioned, evidence-backed knowledge.
 - Transcription selects CUDA automatically when available and uses configurable CPU fallback.
 - Local media passed to Docker is placed in a shared `data/` directory; large media is never stored in PostgreSQL.
+- Normalized audio is retained as a local artifact so later deterministic analysis does not reacquire the source; PostgreSQL stores only its path.
+- Initial Event detection uses configurable RMS audio thresholds and versioned Japanese transcript rules, without an LLM.
+- Events remain evidence records separate from ClipCandidates; same-type nearby detections are merged before persistence.
 
 ## Documentation
 

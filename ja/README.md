@@ -39,3 +39,9 @@ ClipAIは、個人向けAI編集アシスタントのためのローカルファ
 ローカル動画は`data/`へ配置すると、コンテナ内の`/data`として利用できます。CPUでも安全に動く構成は`docker compose up --build`、NVIDIA GPUを使う構成は`docker compose -f compose.yaml -f compose.gpu.yaml up --build`で起動します。
 
 `POST /v1/transcription-jobs`へ`{"source":"/data/example.mp4"}`またはYouTube動画URLを送信します。`GET /v1/transcription-jobs/{job_id}`で進捗と失敗内容を確認し、完了後は`GET /v1/transcripts/{transcript_id}/segments?offset=0&limit=100`で時刻順の区間をページ単位に取得します。
+
+## v0.2 基本イベント検出
+
+完了した文字起こしIDを`POST /v1/event-detection-jobs`へ送信し、`GET /v1/event-detection-jobs/{job_id}`で進捗を確認します。完了後は`GET /v1/transcripts/{transcript_id}/events`で、種類、開始・終了時刻、信頼度、根拠信号、説明を持つタイムラインを取得できます。
+
+検出はRMS音量・無音特徴とバージョン付き日本語文字起こしルールを使用し、閾値は`CLIPAI_EVENT_*`環境変数で変更できます。Eventは証拠区間であり、順位付きClipCandidateではありません。
