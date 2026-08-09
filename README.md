@@ -113,3 +113,33 @@ Invoke-RestMethod http://localhost:8000/v1/transcripts/$($job.transcript_id)/eve
 ```
 
 The timeline contains event type, start/end time, confidence, source signals, and an explanation. Detection uses RMS loudness/silence features and versioned Japanese transcript rules. Thresholds are configurable through the `CLIPAI_EVENT_*` environment variables. Events are evidence regions, not ranked clip candidates.
+
+## v0.3 StreamerKnowledge
+
+Pull the default local model once:
+
+```powershell
+docker compose exec ollama ollama pull qwen2.5:7b-instruct
+```
+
+Create a Streamer with `POST /v1/streamers`, then register completed transcripts and their historical metadata with `POST /v1/streams`. Start knowledge generation with `POST /v1/knowledge-jobs` using the Streamer ID and poll `GET /v1/knowledge-jobs/{job_id}`.
+
+Inspect the current evidence-backed version at:
+
+```text
+GET /v1/streamers/{streamer_id}/knowledge/current
+```
+
+The default selection uses the latest approximately 50 hours plus up to 10 representative registered streams. Each transcript is processed in bounded chunks; the complete history is never placed in one prompt. The default provider/model/prompt are `ollama`, `qwen2.5:7b-instruct`, and `prompts/streamer_knowledge/v1.md`. Every observation includes confidence, `observed` or `inferred` origin, and timestamped transcript evidence.
+
+Example observation:
+
+```json
+{
+  "category": "recurring_phrase",
+  "statement": "成功時に『やった』と繰り返す",
+  "origin": "observed",
+  "confidence": 0.82,
+  "evidence": [{"segment_index": 42, "start_seconds": 315.2, "quote": "やった！"}]
+}
+```

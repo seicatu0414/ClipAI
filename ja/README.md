@@ -45,3 +45,9 @@ ClipAIは、個人向けAI編集アシスタントのためのローカルファ
 完了した文字起こしIDを`POST /v1/event-detection-jobs`へ送信し、`GET /v1/event-detection-jobs/{job_id}`で進捗を確認します。完了後は`GET /v1/transcripts/{transcript_id}/events`で、種類、開始・終了時刻、信頼度、根拠信号、説明を持つタイムラインを取得できます。
 
 検出はRMS音量・無音特徴とバージョン付き日本語文字起こしルールを使用し、閾値は`CLIPAI_EVENT_*`環境変数で変更できます。Eventは証拠区間であり、順位付きClipCandidateではありません。
+
+## v0.3 StreamerKnowledge
+
+最初に`docker compose exec ollama ollama pull qwen2.5:7b-instruct`で既定モデルを取得します。`POST /v1/streamers`で配信者を作成し、完了済み文字起こしと履歴メタデータを`POST /v1/streams`へ登録します。`POST /v1/knowledge-jobs`で生成を開始し、`GET /v1/knowledge-jobs/{job_id}`で進捗を確認します。
+
+現在の証拠付き知識は`GET /v1/streamers/{streamer_id}/knowledge/current`で確認できます。既定では直近約50時間と代表配信最大10本を選び、各文字起こしを上限付きチャンクに分けるため、全履歴を1つのプロンプトへ送りません。各観察には信頼度、`observed`または`inferred`の区分、時刻付き文字起こし証拠が含まれます。

@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     event_silence_db: float = Field(default=-48.0, lt=0)
     event_silence_min_seconds: float = Field(default=2.0, gt=0)
     event_merge_gap_seconds: float = Field(default=2.0, ge=0)
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5:7b-instruct"
+    prompt_root: Path = Path("prompts")
+    knowledge_max_historical_hours: float = Field(default=50.0, gt=0)
+    knowledge_max_representative_streams: int = Field(default=10, ge=0, le=100)
+    knowledge_chunk_characters: int = Field(default=12_000, ge=1_000)
 
 
 @lru_cache
