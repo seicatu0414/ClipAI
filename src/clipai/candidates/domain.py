@@ -45,6 +45,7 @@ class CandidateWindow:
 
 @dataclass(frozen=True)
 class ClipCandidate:
+    id: UUID | None
     rank: int
     start_seconds: float
     end_seconds: float
@@ -64,6 +65,7 @@ class CandidateJob:
     transcript_id: UUID
     event_detection_job_id: UUID
     knowledge_version_id: UUID
+    preference_version_id: UUID | None
     status: CandidateJobStatus
     progress: int
     pipeline_version: str

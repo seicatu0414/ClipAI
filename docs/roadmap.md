@@ -84,6 +84,14 @@ Exit condition:
 
 Repeated use measurably improves candidate acceptance rate.
 
+Implementation baseline:
+
+- store every ◎ / ○ / × separately with optional tags and note,
+- append bounded, explainable category-weight versions,
+- pin future candidate jobs to the current preference version,
+- roll back by appending a copy of a selected historical version,
+- compare accepted average rank and Precision@20/30 on the same reviewed candidates.
+
 ## Deferred
 
 - vision analysis,
