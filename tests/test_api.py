@@ -5,6 +5,14 @@ from fastapi.testclient import TestClient
 from clipai.api import app
 
 
+def test_openapi_schema_builds_with_json_configuration_fields() -> None:
+    schema = app.openapi()
+
+    assert schema["info"]["title"] == "ClipAI API"
+    assert "EventJobResponse" in schema["components"]["schemas"]
+    assert "CandidateJobResponse" in schema["components"]["schemas"]
+
+
 def test_health_is_ok_when_database_is_ready() -> None:
     with patch("clipai.api.database_is_ready", return_value=True):
         response = TestClient(app).get("/health")
