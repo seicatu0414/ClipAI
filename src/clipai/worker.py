@@ -16,6 +16,10 @@ from clipai.events.domain import EventDetectionJob, JsonValue
 from clipai.events.features import WaveAudioFeatureExtractor
 from clipai.events.pipeline import EventDetectionPipeline
 from clipai.events.repository import EventRepository
+from clipai.knowledge.domain import KnowledgeJob
+from clipai.knowledge.pipeline import KnowledgePipeline
+from clipai.knowledge.provider import OllamaProvider
+from clipai.knowledge.repository import KnowledgeRepository
 from clipai.logging import configure_logging
 from clipai.media import FfmpegAudioExtractor, SourceMediaAcquirer
 from clipai.pipeline import TranscriptionPipeline
@@ -91,6 +95,18 @@ def process_event_job(
     pipeline.process(job, Path(source.audio_artifact_path))
 
 
+def build_knowledge_pipeline(
+    settings: Settings,
+    repository: KnowledgeRepository,
+) -> KnowledgePipeline:
+    def provider_factory(job: KnowledgeJob) -> OllamaProvider:
+        if job.provider != "ollama":
+            raise ValueError(f"unsupported LLM provider: {job.provider}")
+        return OllamaProvider(settings.ollama_url)
+
+    return KnowledgePipeline(repository, provider_factory, settings.prompt_root)
+
+
 def run() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
@@ -105,16 +121,32 @@ def run() -> None:
     if recovered_events:
         LOGGER.warning("interrupted_event_jobs_recovered", extra={"job_count": recovered_events})
     event_pipeline = build_event_pipeline(event_repository)
+    knowledge_repository = KnowledgeRepository(settings.database_url)
+    recovered_knowledge = knowledge_repository.recover_interrupted_jobs()
+    if recovered_knowledge:
+        LOGGER.warning(
+            "interrupted_knowledge_jobs_recovered",
+            extra={"job_count": recovered_knowledge},
+        )
+    knowledge_pipeline = build_knowledge_pipeline(settings, knowledge_repository)
     LOGGER.info("worker_started")
     while True:
         job = repository.claim_next_job()
         if job is None:
             event_job = event_repository.claim_next_job()
             if event_job is None:
-                time.sleep(settings.worker_poll_interval_seconds)
-                continue
-            LOGGER.info("event_detection_claimed", extra={"job_id": str(event_job.id)})
-            process_event_job(event_job, repository, event_repository, event_pipeline)
+                knowledge_job = knowledge_repository.claim_next_job()
+                if knowledge_job is None:
+                    time.sleep(settings.worker_poll_interval_seconds)
+                    continue
+                LOGGER.info(
+                    "streamer_knowledge_claimed",
+                    extra={"job_id": str(knowledge_job.id)},
+                )
+                knowledge_pipeline.process(knowledge_job)
+            else:
+                LOGGER.info("event_detection_claimed", extra={"job_id": str(event_job.id)})
+                process_event_job(event_job, repository, event_repository, event_pipeline)
         else:
             LOGGER.info("transcription_claimed", extra={"job_id": str(job.id)})
             pipeline.process(job)
