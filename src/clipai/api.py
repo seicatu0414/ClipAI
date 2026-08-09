@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Query, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 
 from clipai.candidates.configuration import (
     PIPELINE_VERSION,
@@ -21,7 +21,7 @@ from clipai.database import apply_migrations, database_is_ready
 from clipai.domain import SourceSpec, TranscriptSegment, TranscriptionJob
 from clipai.events.configuration import event_configuration
 from clipai.events.detectors import JapaneseTranscriptRuleDetector
-from clipai.events.domain import DetectedEvent, EventDetectionJob, JsonValue
+from clipai.events.domain import DetectedEvent, EventDetectionJob
 from clipai.events.repository import EventRepository
 from clipai.feedback.domain import (
     CandidateFeedback,
