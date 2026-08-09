@@ -51,3 +51,14 @@ ClipAIは、個人向けAI編集アシスタントのためのローカルファ
 最初に`docker compose exec ollama ollama pull qwen2.5:7b-instruct`で既定モデルを取得します。`POST /v1/streamers`で配信者を作成し、完了済み文字起こしと履歴メタデータを`POST /v1/streams`へ登録します。`POST /v1/knowledge-jobs`で生成を開始し、`GET /v1/knowledge-jobs/{job_id}`で進捗を確認します。
 
 現在の証拠付き知識は`GET /v1/streamers/{streamer_id}/knowledge/current`で確認できます。既定では直近約50時間と代表配信最大10本を選び、各文字起こしを上限付きチャンクに分けるため、全履歴を1つのプロンプトへ送りません。各観察には信頼度、`observed`または`inferred`の区分、時刻付き文字起こし証拠が含まれます。
+
+## v0.4 パーソナライズされたクリップ候補
+
+イベント検出とStreamerKnowledgeの完了後、配信者IDと文字起こしIDを
+`POST /v1/candidate-jobs`へ送り、`GET /v1/candidate-jobs/{job_id}`で進捗、
+`GET /v1/candidate-jobs/{job_id}/candidates`で結果を確認します。
+
+Workerは安価なイベント信号から15〜120秒の窓を構築して重複を除き、既定で25件を
+目標に削減します。LLMへ送るのは、関連する証拠付きStreamerKnowledgeを添えた
+削減後の候補だけです。結果には8種類のカテゴリスコア、総合順位、確信度、理由、
+イベントID、正確な解析バージョン情報が含まれます。

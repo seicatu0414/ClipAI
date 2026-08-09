@@ -79,3 +79,12 @@ An AI change should not become the default unless it:
 - or materially reduces processing cost without unacceptable quality loss.
 
 Keep failed experiments; they prevent repeated dead ends.
+
+## v0.4 Candidate Reduction Baseline
+
+For a representative four-hour stream, record candidate count, duration distribution,
+pairwise overlap rate, and category distribution from the candidate-job results. The
+baseline succeeds when it yields 20–30 reviewable candidates, every duration is 15–120
+seconds, explanations cite stored evidence, and no pair reaches the configured overlap
+threshold. Compare by candidate job ID; pinned inputs and analysis-version metadata make
+each run reproducible. Human usefulness remains the deciding measure.

@@ -3,6 +3,9 @@ import time
 from functools import lru_cache
 from pathlib import Path
 
+from clipai.candidates.domain import CandidateJob
+from clipai.candidates.pipeline import CandidatePipeline
+from clipai.candidates.repository import CandidateRepository
 from clipai.config import Settings, get_settings
 from clipai.database import apply_migrations
 from clipai.domain import TranscriptionJob
@@ -107,6 +110,18 @@ def build_knowledge_pipeline(
     return KnowledgePipeline(repository, provider_factory, settings.prompt_root)
 
 
+def build_candidate_pipeline(
+    settings: Settings,
+    repository: CandidateRepository,
+) -> CandidatePipeline:
+    def provider_factory(job: CandidateJob) -> OllamaProvider:
+        if job.provider != "ollama":
+            raise ValueError(f"unsupported LLM provider: {job.provider}")
+        return OllamaProvider(settings.ollama_url)
+
+    return CandidatePipeline(repository, provider_factory, settings.prompt_root)
+
+
 def run() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
@@ -129,6 +144,14 @@ def run() -> None:
             extra={"job_count": recovered_knowledge},
         )
     knowledge_pipeline = build_knowledge_pipeline(settings, knowledge_repository)
+    candidate_repository = CandidateRepository(settings.database_url)
+    recovered_candidates = candidate_repository.recover_interrupted_jobs()
+    if recovered_candidates:
+        LOGGER.warning(
+            "interrupted_candidate_jobs_recovered",
+            extra={"job_count": recovered_candidates},
+        )
+    candidate_pipeline = build_candidate_pipeline(settings, candidate_repository)
     LOGGER.info("worker_started")
     while True:
         job = repository.claim_next_job()
@@ -137,7 +160,15 @@ def run() -> None:
             if event_job is None:
                 knowledge_job = knowledge_repository.claim_next_job()
                 if knowledge_job is None:
-                    time.sleep(settings.worker_poll_interval_seconds)
+                    candidate_job = candidate_repository.claim_next_job()
+                    if candidate_job is None:
+                        time.sleep(settings.worker_poll_interval_seconds)
+                        continue
+                    LOGGER.info(
+                        "clip_candidate_job_claimed",
+                        extra={"job_id": str(candidate_job.id)},
+                    )
+                    candidate_pipeline.process(candidate_job)
                     continue
                 LOGGER.info(
                     "streamer_knowledge_claimed",

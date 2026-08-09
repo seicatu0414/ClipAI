@@ -61,6 +61,14 @@ Exit condition:
 
 A four-hour stream produces approximately 20–30 reviewable candidates.
 
+Implementation baseline:
+
+- construct 15–120 second windows from the versioned event timeline,
+- reduce overlap and cap the pre-LLM set at 25 by default,
+- retrieve only category-relevant knowledge from the pinned knowledge version,
+- score eight clip dimensions and retain reasons plus source references,
+- preserve each run's pipeline, provider, model, prompt, and configuration.
+
 ## v0.5 — Feedback Learning
 
 Goal: use ◎ / ○ / × feedback to improve future ranking.
