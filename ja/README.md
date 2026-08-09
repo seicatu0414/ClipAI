@@ -33,3 +33,9 @@ ClipAIは、個人向けAI編集アシスタントのためのローカルファ
 ## ローカル開発
 
 `.env.example`を`.env`へコピーし、`docker compose up --build`を実行します。APIヘルスエンドポイントは `http://localhost:8000/health` です。APIとWorkerは別プロセスで、重い処理はWorkerだけが担当します。終了は `docker compose down` です。
+
+## v0.1 ローカル文字起こし
+
+ローカル動画は`data/`へ配置すると、コンテナ内の`/data`として利用できます。CPUでも安全に動く構成は`docker compose up --build`、NVIDIA GPUを使う構成は`docker compose -f compose.yaml -f compose.gpu.yaml up --build`で起動します。
+
+`POST /v1/transcription-jobs`へ`{"source":"/data/example.mp4"}`またはYouTube動画URLを送信します。`GET /v1/transcription-jobs/{job_id}`で進捗と失敗内容を確認し、完了後は`GET /v1/transcripts/{transcript_id}/segments?offset=0&limit=100`で時刻順の区間をページ単位に取得します。
