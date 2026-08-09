@@ -33,3 +33,42 @@ ClipAIは、個人向けAI編集アシスタントのためのローカルファ
 ## ローカル開発
 
 `.env.example`を`.env`へコピーし、`docker compose up --build`を実行します。APIヘルスエンドポイントは `http://localhost:8000/health` です。APIとWorkerは別プロセスで、重い処理はWorkerだけが担当します。終了は `docker compose down` です。
+
+## v0.1 ローカル文字起こし
+
+ローカル動画は`data/`へ配置すると、コンテナ内の`/data`として利用できます。CPUでも安全に動く構成は`docker compose up --build`、NVIDIA GPUを使う構成は`docker compose -f compose.yaml -f compose.gpu.yaml up --build`で起動します。
+
+`POST /v1/transcription-jobs`へ`{"source":"/data/example.mp4"}`またはYouTube動画URLを送信します。`GET /v1/transcription-jobs/{job_id}`で進捗と失敗内容を確認し、完了後は`GET /v1/transcripts/{transcript_id}/segments?offset=0&limit=100`で時刻順の区間をページ単位に取得します。
+
+## v0.2 基本イベント検出
+
+完了した文字起こしIDを`POST /v1/event-detection-jobs`へ送信し、`GET /v1/event-detection-jobs/{job_id}`で進捗を確認します。完了後は`GET /v1/transcripts/{transcript_id}/events`で、種類、開始・終了時刻、信頼度、根拠信号、説明を持つタイムラインを取得できます。
+
+検出はRMS音量・無音特徴とバージョン付き日本語文字起こしルールを使用し、閾値は`CLIPAI_EVENT_*`環境変数で変更できます。Eventは証拠区間であり、順位付きClipCandidateではありません。
+
+## v0.3 StreamerKnowledge
+
+最初に`docker compose exec ollama ollama pull qwen2.5:7b-instruct`で既定モデルを取得します。`POST /v1/streamers`で配信者を作成し、完了済み文字起こしと履歴メタデータを`POST /v1/streams`へ登録します。`POST /v1/knowledge-jobs`で生成を開始し、`GET /v1/knowledge-jobs/{job_id}`で進捗を確認します。
+
+現在の証拠付き知識は`GET /v1/streamers/{streamer_id}/knowledge/current`で確認できます。既定では直近約50時間と代表配信最大10本を選び、各文字起こしを上限付きチャンクに分けるため、全履歴を1つのプロンプトへ送りません。各観察には信頼度、`observed`または`inferred`の区分、時刻付き文字起こし証拠が含まれます。
+
+## v0.4 パーソナライズされたクリップ候補
+
+イベント検出とStreamerKnowledgeの完了後、配信者IDと文字起こしIDを
+`POST /v1/candidate-jobs`へ送り、`GET /v1/candidate-jobs/{job_id}`で進捗、
+`GET /v1/candidate-jobs/{job_id}/candidates`で結果を確認します。
+
+Workerは安価なイベント信号から15〜120秒の窓を構築して重複を除き、既定で25件を
+目標に削減します。LLMへ送るのは、関連する証拠付きStreamerKnowledgeを添えた
+削減後の候補だけです。結果には8種類のカテゴリスコア、総合順位、確信度、理由、
+イベントID、正確な解析バージョン情報が含まれます。
+
+## v0.5 フィードバック学習
+
+`POST /v1/candidates/{candidate_id}/feedback`へ◎・○・×、任意タグとメモを
+送信します。各評価は元候補を変更せず、独立履歴と新しい不変の好み版を作ります。
+将来の候補ジョブは現在版を固定し、共通スコア計算へ説明可能な8カテゴリ重みを
+適用します。版の一覧、追加専用ロールバック、2版比較もAPIから実行できます。
+
+例えばユーモア中心候補へ`humor`タグ付き◎を付けると、ユーモア重みは1.0000から
+1.0810へ上がります。メモと`other`タグは保存しますが、v0.5では重みに使いません。

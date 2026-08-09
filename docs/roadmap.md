@@ -61,6 +61,14 @@ Exit condition:
 
 A four-hour stream produces approximately 20–30 reviewable candidates.
 
+Implementation baseline:
+
+- construct 15–120 second windows from the versioned event timeline,
+- reduce overlap and cap the pre-LLM set at 25 by default,
+- retrieve only category-relevant knowledge from the pinned knowledge version,
+- score eight clip dimensions and retain reasons plus source references,
+- preserve each run's pipeline, provider, model, prompt, and configuration.
+
 ## v0.5 — Feedback Learning
 
 Goal: use ◎ / ○ / × feedback to improve future ranking.
@@ -75,6 +83,14 @@ Deliverables:
 Exit condition:
 
 Repeated use measurably improves candidate acceptance rate.
+
+Implementation baseline:
+
+- store every ◎ / ○ / × separately with optional tags and note,
+- append bounded, explainable category-weight versions,
+- pin future candidate jobs to the current preference version,
+- roll back by appending a copy of a selected historical version,
+- compare accepted average rank and Precision@20/30 on the same reviewed candidates.
 
 ## Deferred
 

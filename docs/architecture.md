@@ -119,6 +119,10 @@ A new pipeline, model, prompt, or configuration should be identifiable in stored
 
 StreamerKnowledge must be versioned so changes can be inspected and rolled back.
 
+Streamer-specific preferences are a versioned layer over the global candidate scorer.
+A candidate job pins one preference version. Feedback appends a feedback record and a new
+preference version; it never updates stored candidates. Rollback is also append-only.
+
 ## Initial Job Processing
 
 A simple database-backed job mechanism is sufficient for the local MVP.

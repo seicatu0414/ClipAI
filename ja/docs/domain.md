@@ -12,3 +12,7 @@
 - **Feedback**：候補に対する評価、理由タグ、任意メモ、時刻です。過去の候補を書き換えず将来の好みに影響します。
 
 StreamはStreamerに、AnalysisSessionはStreamに属します。Transcript、Event、ClipCandidateはAnalysisSessionに、FeedbackはClipCandidateに属します。StreamerKnowledgeはStreamerに属し、AnalysisSession由来の証拠を参照します。
+
+**RankingPreference**は、置換可能な共通順位ロジックの上に適用する配信者固有の
+不変カテゴリ重みです。各版は直前版、元フィードバックまたはロールバック先、重み、
+説明を持ち、候補解析は使用版を固定します。自由記述は保存しますが自動解釈しません。

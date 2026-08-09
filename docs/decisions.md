@@ -30,6 +30,16 @@ Do not use it as a diary.
 - Use deterministic or lightweight filtering before LLM reasoning.
 - Use a simple database-backed job mechanism before adopting separate queue infrastructure.
 - Store StreamerKnowledge as versioned, evidence-backed knowledge.
+- Transcription selects CUDA automatically when available and uses configurable CPU fallback.
+- Local media passed to Docker is placed in a shared `data/` directory; large media is never stored in PostgreSQL.
+- Normalized audio is retained as a local artifact so later deterministic analysis does not reacquire the source; PostgreSQL stores only its path.
+- Initial Event detection uses configurable RMS audio thresholds and versioned Japanese transcript rules, without an LLM.
+- Events remain evidence records separate from ClipCandidates; same-type nearby detections are merged before persistence.
+- Historical knowledge selection uses the latest approximately 50 hours plus up to 10 registered representative streams.
+- StreamerKnowledge uses bounded transcript chunks, an external versioned prompt, and a replaceable LLM provider; Ollama is the local default.
+- Every knowledge observation records `observed` or `inferred` origin, confidence, and timestamped transcript evidence.
+- Knowledge versions are immutable and linked to their previous version; failed jobs never become the current version.
+- Inferred knowledge confidence is capped at 0.7, and recurring claims require at least two distinct evidence segments.
 
 ## Documentation
 
