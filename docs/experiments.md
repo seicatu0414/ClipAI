@@ -1,0 +1,81 @@
+# Experiments and Evaluation
+
+## Purpose
+
+ClipAI contains uncertain AI behavior.
+Changes must be evaluated rather than accepted because they sound plausible.
+
+## Core Hypotheses
+
+### H1 — Personalization
+
+StreamerKnowledge improves candidate acceptance compared with a generic highlight detector.
+
+### H2 — Candidate Reduction
+
+Cheap audio, transcript, and metadata signals can reduce LLM workload without unacceptable loss of strong moments.
+
+### H3 — Variable Duration
+
+Variable windows between approximately 15 and 120 seconds preserve setup and payoff better than fixed 30- or 60-second clips.
+
+### H4 — Feedback
+
+◎ / ○ / × feedback with reason tags improves later ranking.
+
+### H5 — Vision Value
+
+Vision adds enough incremental accuracy to justify its processing cost only after the audio and transcript baseline is established.
+
+## Evaluation Dataset
+
+Start with a small private benchmark:
+
+- several streams from one target creator,
+- later add a small number of additional creators,
+- preserve the original archives,
+- maintain a human-reviewed list of strong and weak regions.
+
+Do not require professional editors.
+The project owner may perform review because the goal is to reduce repeated archive review, not eliminate all human judgment.
+
+## Metrics
+
+Track at minimum:
+
+- candidate acceptance rate,
+- Precision@20,
+- Precision@30,
+- duplicate or overlapping candidate rate,
+- coverage of known strong moments,
+- false-positive categories,
+- average review duration,
+- processing time per video hour,
+- GPU memory usage,
+- LLM tokens or calls,
+- human-rated explanation quality.
+
+Recall can be estimated only when the review set contains known missed moments.
+
+## Experiment Record
+
+Each experiment must record:
+
+- hypothesis,
+- dataset version,
+- pipeline version,
+- model and prompt versions,
+- configuration,
+- output metrics,
+- qualitative failures,
+- decision.
+
+## Acceptance Rule
+
+An AI change should not become the default unless it:
+
+- improves a target metric,
+- fixes a documented failure mode,
+- or materially reduces processing cost without unacceptable quality loss.
+
+Keep failed experiments; they prevent repeated dead ends.
