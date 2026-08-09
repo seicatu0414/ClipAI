@@ -38,8 +38,16 @@ def test_extensions_are_bounded() -> None:
     assert result.extend_after_seconds == 0
 
 
-def test_response_requires_all_values_to_be_probabilities() -> None:
+def test_response_bounds_numeric_scores_to_probabilities() -> None:
     scores = {category.value: 0.1 for category in CandidateCategory}
     scores[CandidateCategory.HUMOR.value] = 2
-    with pytest.raises(ValueError, match="humor"):
-        parse_ranking_response(response(category_scores=scores))
+    scores[CandidateCategory.GREAT_PLAY.value] = -1
+
+    result = parse_ranking_response(
+        response(category_scores=scores, confidence=3)
+    )
+
+    assert result.category_scores[CandidateCategory.HUMOR] == 1
+    assert result.category_scores[CandidateCategory.GREAT_PLAY] == 0
+    assert result.confidence == 1
+

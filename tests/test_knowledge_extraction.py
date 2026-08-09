@@ -48,6 +48,18 @@ def test_chunks_never_exceed_configured_character_limit() -> None:
     assert all(len(chunk.rendered) <= 50 for chunk in chunks)
 
 
+def test_v2_prompt_json_examples_survive_template_formatting() -> None:
+    prompt_path = Path(__file__).parents[1] / "prompts" / "streamer_knowledge" / "v2.md"
+    rendered = prompt_path.read_text(encoding="utf-8").format(
+        streamer_name="配信者",
+        stream_title="配信",
+        transcript_chunk="[0] 本文",
+    )
+
+    assert '{"observations":[]}' in rendered
+    assert '{"category":"recurring_phrase"' in rendered
+
+
 def test_extracts_evidence_backed_observation(tmp_path: Path) -> None:
     prompt = tmp_path / "v1.md"
     prompt.write_text("{streamer_name}\n{stream_title}\n{transcript_chunk}", encoding="utf-8")
@@ -79,7 +91,7 @@ def test_extracts_evidence_backed_observation(tmp_path: Path) -> None:
     assert observations[0].evidence[0].segment_index == 3
 
 
-def test_rejects_observation_without_evidence(tmp_path: Path) -> None:
+def test_discards_observation_without_evidence(tmp_path: Path) -> None:
     prompt = tmp_path / "v1.md"
     prompt.write_text("{transcript_chunk}", encoding="utf-8")
     provider = FakeProvider(
@@ -101,10 +113,64 @@ def test_rejects_observation_without_evidence(tmp_path: Path) -> None:
         )
     )
 
-    with pytest.raises(ValueError, match="requires evidence"):
-        KnowledgeExtractor(provider, model="test-model", prompt_path=prompt).extract(
-            Streamer(uuid4(), "https://youtube.com/@x", "配信者"), chunk
+    observations = KnowledgeExtractor(
+        provider, model="test-model", prompt_path=prompt
+    ).extract(Streamer(uuid4(), "https://youtube.com/@x", "配信者"), chunk)
+
+    assert observations == []
+
+
+def test_keeps_valid_observation_when_neighbor_has_invalid_evidence(
+    tmp_path: Path,
+) -> None:
+    prompt = tmp_path / "v2.md"
+    prompt.write_text("{transcript_chunk}", encoding="utf-8")
+    provider = FakeProvider(
+        {
+            "observations": [
+                {
+                    "category": "content_strength",
+                    "statement": "ゲームへの反応が明確",
+                    "origin": "observed",
+                    "confidence": 0.8,
+                    "evidence_segment_indexes": [1],
+                },
+                {
+                    "category": "speech_pattern",
+                    "statement": "時刻を誤参照",
+                    "origin": "observed",
+                    "confidence": 0.8,
+                    "evidence_segment_indexes": [136.46],
+                },
+            ]
+        }
+    )
+    chunk = next(
+        chunk_segments(
+            _stream(), [TranscriptSegment(1, 0, 1, "反応")], maximum_characters=100
         )
+    )
+
+    observations = KnowledgeExtractor(
+        provider, model="test-model", prompt_path=prompt
+    ).extract(Streamer(uuid4(), "https://youtube.com/@x", "配信者"), chunk)
+
+    assert [item.statement for item in observations] == ["ゲームへの反応が明確"]
+
+
+@pytest.mark.parametrize("response", ["not-json", '{"result": []}'])
+def test_discards_malformed_provider_response_without_failing_chunk(
+    tmp_path: Path, response: str
+) -> None:
+    prompt = tmp_path / "v2.md"
+    prompt.write_text("{transcript_chunk}", encoding="utf-8")
+    chunk = next(
+        chunk_segments(
+            _stream(), [TranscriptSegment(1, 0, 1, "本文")], maximum_characters=100
+        )
+    )
+
+    assert KnowledgeExtractor._parse(response, chunk) == []
 
 
 def test_merges_duplicate_observations_and_evidence(
@@ -181,3 +247,4 @@ def test_recurring_claim_requires_two_distinct_evidence_segments(tmp_path: Path)
     )[0]
 
     assert keep_evidence_supported([observation]) == []
+

@@ -1,0 +1,8 @@
+# Automatically loaded with compose.yaml on the primary NVIDIA workstation.
+# Keep compose.gpu.yaml for environments that opt into GPU support explicitly.
+services:
+  worker:
+    gpus: all
+  ollama:
+    gpus: all
+
