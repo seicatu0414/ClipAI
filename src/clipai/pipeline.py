@@ -1,4 +1,5 @@
 import logging
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -31,8 +32,11 @@ class TranscriptionPipeline:
         self._media_root = media_root
 
     def process(self, job: TranscriptionJob) -> None:
-        work_directory = prepare_work_directory(self._media_root, job.id)
+        work_directory = self._media_root / "work" / str(job.id)
+        artifact_directory = self._media_root / "artifacts" / str(job.id)
         try:
+            work_directory = prepare_work_directory(self._media_root, job.id)
+            shutil.rmtree(artifact_directory, ignore_errors=True)
             self._repository.update_progress(job.id, 10)
             source_path = self._media_acquirer.acquire(job.source, work_directory)
             self._repository.update_progress(job.id, 30)
@@ -44,11 +48,22 @@ class TranscriptionPipeline:
             transcriber = self._transcriber_factory(job)
             result = transcriber.transcribe(audio_path, language=job.language)
             self._repository.update_progress(job.id, 70)
-            self._repository.save_transcript(job.id, result.metadata, result.segments)
+            transcript_id = self._repository.save_transcript(
+                job.id, result.metadata, result.segments
+            )
+            artifact_directory.mkdir(parents=True, exist_ok=True)
+            artifact_path = artifact_directory / "normalized.wav"
+            shutil.move(str(audio_path), artifact_path)
+            self._repository.set_audio_artifact(transcript_id, str(artifact_path))
             self._repository.mark_completed(job.id)
-            LOGGER.info("transcription_completed", extra={"job_id": str(job.id)})
+            LOGGER.info(
+                "transcription_completed",
+                extra={"job_id": str(job.id), "transcript_id": str(transcript_id)},
+            )
         except Exception as error:
             LOGGER.exception("transcription_failed", extra={"job_id": str(job.id)})
+            self._repository.discard_transcript(job.id)
+            shutil.rmtree(artifact_directory, ignore_errors=True)
             self._repository.mark_failed(job.id, str(error) or error.__class__.__name__)
         finally:
             remove_work_directory(work_directory)

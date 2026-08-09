@@ -100,3 +100,16 @@ YouTube smoke test:
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/transcription-jobs `
   -ContentType application/json -Body '{"source":"https://www.youtube.com/watch?v=VIDEO_ID"}'
 ```
+
+## v0.2 Basic Event Detection
+
+Run lightweight event detection for one completed transcript:
+
+```powershell
+$eventJob = Invoke-RestMethod -Method Post -Uri http://localhost:8000/v1/event-detection-jobs `
+  -ContentType application/json -Body (ConvertTo-Json @{ transcript_id = $job.transcript_id })
+Invoke-RestMethod http://localhost:8000/v1/event-detection-jobs/$($eventJob.id)
+Invoke-RestMethod http://localhost:8000/v1/transcripts/$($job.transcript_id)/events
+```
+
+The timeline contains event type, start/end time, confidence, source signals, and an explanation. Detection uses RMS loudness/silence features and versioned Japanese transcript rules. Thresholds are configurable through the `CLIPAI_EVENT_*` environment variables. Events are evidence regions, not ranked clip candidates.

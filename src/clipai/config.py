@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     device: Literal["auto", "cuda", "cpu"] = "auto"
     cpu_fallback: bool = True
     worker_poll_interval_seconds: float = Field(default=2.0, gt=0)
+    event_min_confidence: float = Field(default=0.55, ge=0, le=1)
+    event_loudness_delta_db: float = Field(default=12.0, gt=0)
+    event_silence_db: float = Field(default=-48.0, lt=0)
+    event_silence_min_seconds: float = Field(default=2.0, gt=0)
+    event_merge_gap_seconds: float = Field(default=2.0, ge=0)
 
 
 @lru_cache

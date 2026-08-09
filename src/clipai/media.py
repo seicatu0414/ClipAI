@@ -71,6 +71,7 @@ class FfmpegAudioExtractor:
 
 def prepare_work_directory(media_root: Path, job_id: UUID) -> Path:
     directory = media_root / "work" / str(job_id)
+    shutil.rmtree(directory, ignore_errors=True)
     directory.mkdir(parents=True, exist_ok=False)
     return directory
 

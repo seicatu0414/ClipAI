@@ -20,6 +20,12 @@ class JobSnapshot:
     transcript_id: UUID | None
 
 
+@dataclass(frozen=True)
+class TranscriptSource:
+    transcript_id: UUID
+    audio_artifact_path: str
+
+
 class TranscriptionRepository:
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
@@ -201,6 +207,30 @@ class TranscriptionRepository:
                 (job_id,),
             )
             connection.commit()
+
+    def set_audio_artifact(self, transcript_id: UUID, path: str) -> None:
+        with connect(self._database_url) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE transcripts SET audio_artifact_path = %s WHERE id = %s",
+                (path, transcript_id),
+            )
+            connection.commit()
+
+    def discard_transcript(self, job_id: UUID) -> None:
+        with connect(self._database_url) as connection, connection.cursor() as cursor:
+            cursor.execute("DELETE FROM transcripts WHERE job_id = %s", (job_id,))
+            connection.commit()
+
+    def get_transcript_source(self, transcript_id: UUID) -> TranscriptSource | None:
+        with connect(self._database_url) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, audio_artifact_path FROM transcripts WHERE id = %s",
+                (transcript_id,),
+            )
+            row = cursor.fetchone()
+        if row is None or row[1] is None:
+            return None
+        return TranscriptSource(transcript_id=row[0], audio_artifact_path=row[1])
 
     def mark_failed(self, job_id: UUID, error: str) -> None:
         with connect(self._database_url) as connection, connection.cursor() as cursor:
