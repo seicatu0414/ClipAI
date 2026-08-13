@@ -1,5 +1,12 @@
 # Experiments and Evaluation
 
+## End Boundary Comparison
+
+Compare the same Event and transcript with the previous and current pipeline. Record old
+and new end timestamps, delta seconds, inferred TopicWindow, selection reason, confidence,
+and source signals. Review content, start boundary, and end boundary separately so future
+feedback learning can distinguish these failure modes.
+
 ## Purpose
 
 ClipAI contains uncertain AI behavior.

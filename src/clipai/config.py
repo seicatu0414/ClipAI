@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     candidate_merge_gap_seconds: float = Field(default=8.0, ge=0)
     candidate_overlap_threshold: float = Field(default=0.65, gt=0, le=1)
     candidate_maximum_knowledge_observations: int = Field(default=5, ge=0, le=20)
+    candidate_context_window_seconds: float = Field(default=600.0, ge=300, le=600)
+    candidate_end_boundary_count: int = Field(default=5, ge=3, le=5)
 
 
 @lru_cache
