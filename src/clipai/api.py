@@ -315,6 +315,7 @@ class CandidateResponse(BaseModel):
     reasons: list[str]
     event_ids: list[UUID]
     knowledge_observation_ids: list[UUID]
+    boundary_analysis: dict[str, JsonValue]
 
     @classmethod
     def from_candidate(cls, candidate: ClipCandidate) -> "CandidateResponse":
@@ -331,6 +332,7 @@ class CandidateResponse(BaseModel):
             reasons=list(candidate.reasons),
             event_ids=list(candidate.event_ids),
             knowledge_observation_ids=list(candidate.knowledge_observation_ids),
+            boundary_analysis=candidate.boundary_analysis,
         )
 
 
@@ -733,4 +735,3 @@ def compare_preferences(
             evaluate_preferences(candidates, after.category_weights, after.id)
         ),
     )
-

@@ -1,5 +1,8 @@
 # ドメイン
 
+ClipCandidateはアンカーEvent、開始境界、TopicWindow、複数の終了境界候補、選択された
+終了境界、および選択理由・confidence・source signalsを追跡可能な形で保持する。
+
 特定のAI実装ではなく、長く変わらない業務上の意味を表す名前を使います。
 
 - **Streamer**：学習対象となる配信者。内部ID、YouTubeチャンネルID・URL、表示名を持ち、全履歴を巨大な単一オブジェクトとして保持しません。

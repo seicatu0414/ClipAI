@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from uuid import UUID
 
@@ -44,6 +44,33 @@ class CandidateWindow:
 
 
 @dataclass(frozen=True)
+class TopicWindow:
+    start_seconds: float
+    end_seconds: float
+    confidence: float
+    source_signals: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class EndBoundaryCandidate:
+    id: str
+    timestamp: float
+    confidence: float
+    reason: str
+    source_signals: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class EndBoundarySelection:
+    timestamp: float
+    confidence: float
+    reason: str
+    source_signals: tuple[str, ...]
+    topic_window: TopicWindow
+    candidates: tuple[EndBoundaryCandidate, ...]
+
+
+@dataclass(frozen=True)
 class ClipCandidate:
     id: UUID | None
     rank: int
@@ -56,6 +83,7 @@ class ClipCandidate:
     event_ids: tuple[UUID, ...]
     knowledge_observation_ids: tuple[UUID, ...]
     knowledge: tuple[KnowledgeObservation, ...]
+    boundary_analysis: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
