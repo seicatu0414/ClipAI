@@ -2,6 +2,11 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
+from clipai.candidates.boundaries import (
+    EndBoundaryDetector,
+    LlmEndBoundaryRanker,
+    boundary_analysis,
+)
 from clipai.candidates.domain import (
     CandidateCategory,
     CandidateJob,
@@ -71,10 +76,22 @@ class CandidatePipeline:
             indexed_knowledge = self._repository.load_knowledge(job)
             knowledge_ids = {item: identity for identity, item in indexed_knowledge}
             observations = tuple(item for _, item in indexed_knowledge)
+            provider = self._provider_factory(job)
             ranker = LlmCandidateRanker(
-                self._provider_factory(job),
+                provider,
                 job.model,
                 self._prompt_root / "candidate_ranking" / f"{job.prompt_version}.md",
+            )
+            end_detector = EndBoundaryDetector(
+                LlmEndBoundaryRanker(
+                    provider,
+                    job.model,
+                    (
+                        self._prompt_root
+                        / "end_boundary_ranking"
+                        / f"{job.prompt_version}.md"
+                    ).read_text(encoding="utf-8"),
+                )
             )
             scorer = self._scorer or WeightedCandidateScorer(
                 self._repository.load_preference_weights(job.preference_version_id)
@@ -86,11 +103,36 @@ class CandidatePipeline:
                     *(_EVENT_CATEGORIES[item.event_type] for item in window.events)
                 )
                 knowledge = relevant_knowledge(observations, categories, maximum)
-                segments = self._repository.segments_for(
-                    job.transcript_id, window.start_seconds, window.end_seconds
+                context_seconds = _number(config, "context_window_seconds")
+                anchor = sum(
+                    (item.start_seconds + item.end_seconds) / 2
+                    for item in window.events
+                ) / len(window.events)
+                context = self._repository.segments_for(
+                    job.transcript_id,
+                    max(0.0, anchor - context_seconds / 2),
+                    anchor + context_seconds / 2,
                 )
-                result = ranker.rank(window, segments, knowledge)
-                start, end = _extended_window(window, result, config)
+                selection = end_detector.detect(
+                    window, context, knowledge,
+                    minimum_seconds=_number(config, "minimum_seconds"),
+                    maximum_seconds=_number(config, "maximum_seconds"),
+                    candidate_count=_integer(config, "end_boundary_count"),
+                )
+                bounded_window = CandidateWindow(
+                    window.start_seconds,
+                    selection.timestamp,
+                    window.events,
+                    window.preliminary_score,
+                )
+                segments = [
+                    item
+                    for item in context
+                    if item.end_seconds >= bounded_window.start_seconds
+                    and item.start_seconds <= bounded_window.end_seconds
+                ]
+                result = ranker.rank(bounded_window, segments, knowledge)
+                start, end = _extended_window(bounded_window, result, config)
                 ranked.append(
                     ClipCandidate(
                         None,
@@ -104,6 +146,7 @@ class CandidatePipeline:
                         tuple(item.id for item in window.events),
                         tuple(knowledge_ids[item] for item in knowledge),
                         knowledge,
+                        boundary_analysis(window, selection),
                     )
                 )
                 self._repository.update_progress(
@@ -130,7 +173,9 @@ def _extended_window(
     minimum = _number(config, "minimum_seconds")
     maximum = _number(config, "maximum_seconds")
     start = max(0.0, window.start_seconds - result.extend_before_seconds)
-    end = window.end_seconds + result.extend_after_seconds
+    # EndBoundaryDetector has already ranked explicit natural endings. The content
+    # ranker's legacy extension must not override that independently selected boundary.
+    end = window.end_seconds
     end = max(end, start + minimum)
     if end - start > maximum:
         end = start + maximum
@@ -152,7 +197,8 @@ def _rank_and_suppress(
     return [
         ClipCandidate(item.id, index, item.start_seconds, item.end_seconds, item.category_scores,
                       item.overall_score, item.confidence, item.reasons,
-                      item.event_ids, item.knowledge_observation_ids, item.knowledge)
+                      item.event_ids, item.knowledge_observation_ids, item.knowledge,
+                      item.boundary_analysis)
         for index, item in enumerate(selected, start=1)
     ]
 

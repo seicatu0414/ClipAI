@@ -281,8 +281,11 @@ class CandidateRepository:
                     INSERT INTO clip_candidates (
                         candidate_job_id, transcript_id, rank, start_seconds,
                         end_seconds, category_scores, overall_score, confidence,
-                        reasons, event_ids, knowledge_observation_ids
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        reasons, event_ids, knowledge_observation_ids,
+                        boundary_analysis
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
                     """,
                     (
                         job.id,
@@ -296,6 +299,7 @@ class CandidateRepository:
                         Jsonb(list(item.reasons)),
                         Jsonb([str(value) for value in item.event_ids]),
                         Jsonb([str(value) for value in item.knowledge_observation_ids]),
+                        Jsonb(item.boundary_analysis),
                     ),
                 )
             cursor.execute(
@@ -314,7 +318,7 @@ class CandidateRepository:
                 """
                 SELECT id, rank, start_seconds, end_seconds, category_scores,
                     overall_score, confidence, reasons, event_ids,
-                    knowledge_observation_ids
+                    knowledge_observation_ids, boundary_analysis
                 FROM clip_candidates WHERE candidate_job_id = %s ORDER BY rank
                 """,
                 (job_id,),
@@ -327,10 +331,13 @@ class CandidateRepository:
                 row[2],
                 row[3],
                 {CandidateCategory(key): value for key, value in row[4].items()},
-                row[5], row[6], tuple(row[7]),
+                row[5],
+                row[6],
+                tuple(row[7]),
                 tuple(UUID(value) for value in row[8]),
                 tuple(UUID(value) for value in row[9]),
                 (),
+                row[10],
             )
             for row in rows
         ]

@@ -109,6 +109,10 @@ Represents one ranked review suggestion.
 It contains:
 
 - start and end,
+- its anchor Event and retained start-boundary decision,
+- the surrounding TopicWindow,
+- generated end-boundary choices and the selected timestamp,
+- end-boundary confidence, reason, and source signals,
 - category scores,
 - overall score,
 - confidence,

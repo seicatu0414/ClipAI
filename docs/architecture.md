@@ -73,12 +73,14 @@ External providers may be added for comparison, but they are not required for th
 4. Generate a timestamped transcript with faster-whisper.
 5. Extract inexpensive deterministic features.
 6. Detect potentially meaningful event regions.
-7. Merge nearby events into candidate windows.
-8. Retrieve only relevant StreamerKnowledge.
-9. Use an LLM to reason about reduced candidate windows.
-10. Produce multidimensional scores and explanations.
-11. Present candidates to the human.
-12. Store feedback and update future ranking behavior.
+7. Merge nearby events into candidate anchors and start boundaries.
+8. Inspect a configurable 5–10 minute transcript ContextWindow and estimate a variable TopicWindow with multiple deterministic signals.
+9. Generate 3–5 local end-boundary candidates, then use an LLM only to rank those choices.
+10. Retrieve only relevant StreamerKnowledge.
+11. Use an LLM to reason about reduced ClipWindows.
+12. Produce multidimensional scores and explanations.
+13. Present candidates to the human.
+14. Store feedback and update future ranking behavior.
 
 ## Candidate Reduction Principle
 
