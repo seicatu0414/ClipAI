@@ -24,6 +24,19 @@ class CandidateJobStatus(StrEnum):
     FAILED = "failed"
 
 
+class ScenePhase(StrEnum):
+    SETUP = "setup"
+    DEVELOPMENT = "development"
+    CLIMAX = "climax"
+    AFTERMATH = "aftermath"
+    TRANSITION = "transition"
+
+
+class ThreadStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+
+
 @dataclass(frozen=True)
 class CandidateEvent:
     id: UUID
@@ -52,6 +65,41 @@ class TopicWindow:
 
 
 @dataclass(frozen=True)
+class OpenThread:
+    thread: str
+    status: ThreadStatus
+    confidence: float
+    opened_at: float
+    resolved_at: float | None = None
+
+
+@dataclass(frozen=True)
+class SemanticChunk:
+    start_seconds: float
+    end_seconds: float
+    text: str
+    phase: ScenePhase
+    source_signals: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SceneWindow:
+    start_seconds: float
+    end_seconds: float
+    phase: ScenePhase
+    phases: tuple[ScenePhase, ...]
+    primary_goal: str | None
+    open_threads: tuple[OpenThread, ...]
+    resolved_threads: tuple[OpenThread, ...]
+    emotional_state: str
+    reaction_state: str
+    transition_signal: str | None
+    confidence: float
+    completion_confidence: float
+    source_signals: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class EndBoundaryCandidate:
     id: str
     timestamp: float
@@ -67,7 +115,12 @@ class EndBoundarySelection:
     reason: str
     source_signals: tuple[str, ...]
     topic_window: TopicWindow
+    scene_window: SceneWindow
     candidates: tuple[EndBoundaryCandidate, ...]
+    context_start_seconds: float
+    context_end_seconds: float
+    llm_used: bool
+    detailed_analysis_used: bool
 
 
 @dataclass(frozen=True)

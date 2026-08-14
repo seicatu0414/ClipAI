@@ -1,7 +1,11 @@
 # ドメイン
 
-ClipCandidateはアンカーEvent、開始境界、TopicWindow、複数の終了境界候補、選択された
-終了境界、および選択理由・confidence・source signalsを追跡可能な形で保持する。
+ClipCandidateはアンカーEvent、開始境界、TopicWindow、SceneWindow、アンカーのScene
+Phase、Primary Goal、Open/Resolved Thread、感情・Reaction State、複数の終了境界候補、
+選択された終了境界、および選択理由・confidence・source signalsを追跡可能な形で保持します。
+SemanticChunkはPhase推定に使う安定したTranscript区間、SceneWindowは単なる話題ではなく
+一つの因果系列、OpenThreadは未解決の問い・目的・期待・Callbackとその解決を表します。
+これらは説明根拠であり、ClipCandidate自体は15秒〜15分以内です。
 
 特定のAI実装ではなく、長く変わらない業務上の意味を表す名前を使います。
 

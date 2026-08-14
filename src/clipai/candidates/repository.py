@@ -268,6 +268,21 @@ class CandidateRepository:
             rows = cursor.fetchall()
         return [TranscriptSegment(*row) for row in rows]
 
+    def all_segments(self, transcript_id: UUID) -> list[TranscriptSegment]:
+        with connect(self._database_url) as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT segment_index, start_seconds, end_seconds, text,
+                    average_log_probability, no_speech_probability
+                FROM transcript_segments
+                WHERE transcript_id = %s
+                ORDER BY segment_index
+                """,
+                (transcript_id,),
+            )
+            rows = cursor.fetchall()
+        return [TranscriptSegment(*row) for row in rows]
+
     def save_candidates(
         self,
         job: CandidateJob,

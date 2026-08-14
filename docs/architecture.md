@@ -74,13 +74,20 @@ External providers may be added for comparison, but they are not required for th
 5. Extract inexpensive deterministic features.
 6. Detect potentially meaningful event regions.
 7. Merge nearby events into candidate anchors and start boundaries.
-8. Inspect a configurable 5–10 minute transcript ContextWindow and estimate a variable TopicWindow with multiple deterministic signals.
-9. Generate 3–5 local end-boundary candidates, then use an LLM only to rank those choices.
-10. Retrieve only relevant StreamerKnowledge.
-11. Use an LLM to reason about reduced ClipWindows.
-12. Produce multidimensional scores and explanations.
-13. Present candidates to the human.
-14. Store feedback and update future ranking behavior.
+8. Build reusable semantic chunks and a deterministic Scene timeline for the transcript.
+9. Inspect an initial configurable 5–10 minute ContextWindow and estimate a variable TopicWindow with multiple deterministic signals.
+10. Identify the Event's Scene and phase (`SETUP`, `DEVELOPMENT`, `CLIMAX`, `AFTERMATH`, or `TRANSITION`), including goals, open/resolved threads, and reaction state.
+11. Generate 3–5 Scene-aware end-boundary candidates from Scene/Topic boundaries, thread resolution, aftermath, transitions, silence, and utterance signals.
+12. Retrieve only relevant StreamerKnowledge and use an LLM only to rank supplied end IDs.
+13. When confidence is low or the Scene remains incomplete/ambiguous, expand context in bounded five-minute steps and perform one detailed re-ranking.
+14. Produce a naturally complete ClipWindow between 15 seconds and the 15-minute hard maximum, plus multidimensional scores and explanations.
+15. Present candidates to the human.
+16. Store feedback and update future ranking behavior.
+
+Topic and Scene are deliberately separate: a Topic describes subject matter, while a
+Scene describes a causal sequence such as setup, attempt, payoff, reaction, aftermath,
+and transition. Candidate processing reuses the transcript-level Scene timeline rather
+than asking the LLM to rediscover the same structure per anchor.
 
 ## Candidate Reduction Principle
 

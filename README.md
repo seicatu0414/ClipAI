@@ -158,10 +158,14 @@ Invoke-RestMethod http://localhost:8000/v1/candidate-jobs/$($candidateJob.id)
 Invoke-RestMethod http://localhost:8000/v1/candidate-jobs/$($candidateJob.id)/candidates
 ```
 
-The worker constructs and deduplicates 15–120 second windows from inexpensive event
-signals, targeting 25 by default. Only the reduced set is sent to the LLM with relevant
-evidence-backed StreamerKnowledge. Results include eight category scores, overall rank,
-confidence, reasons, event IDs, and exact analysis-version metadata.
+The worker constructs anchors from inexpensive event signals, builds one reusable
+semantic-chunk and Scene timeline, and selects a natural 15-second-to-15-minute clip
+(15 minutes is a hard maximum, not a target). Topic boundaries, Scene phases, unresolved
+goals, reactions, aftermath, and relevant evidence-backed StreamerKnowledge inform 3–5
+pre-generated end choices; the LLM may only rank those IDs. Low-confidence or incomplete
+Scenes expand the initial 10-minute context in bounded five-minute steps and receive one
+detailed re-ranking. Results retain the Scene, open threads, choices, reasons, confidence,
+and exact analysis-version metadata.
 
 ## v0.5 Feedback Learning
 
@@ -175,4 +179,3 @@ a version with `POST /v1/streamers/{streamer_id}/preferences/rollback`, and comp
 versions with `GET /v1/streamers/{streamer_id}/preferences/compare`. For example, an ◎
 on a humor-heavy candidate tagged `humor` changes that weight from 1.0000 to 1.0810.
 Notes and `other` tags are retained but do not alter weights in v0.5.
-
