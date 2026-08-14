@@ -111,6 +111,8 @@ It contains:
 - start and end,
 - its anchor Event and retained start-boundary decision,
 - the surrounding TopicWindow,
+- the surrounding SceneWindow and anchor Scene phase,
+- primary goal, open/resolved threads, and emotional/reaction state when available,
 - generated end-boundary choices and the selected timestamp,
 - end-boundary confidence, reason, and source signals,
 - category scores,
@@ -120,6 +122,12 @@ It contains:
 - evidence references,
 - source AnalysisSession,
 - human review status.
+
+`SemanticChunk` is a stable transcript interval used to estimate Scene phase.
+`SceneWindow` represents one causal sequence rather than merely one subject. An
+`OpenThread` records an unresolved question, goal, expectation, or callback and its later
+resolution. These structures are explainability evidence; ClipCandidate duration remains
+independent and is bounded to 15 seconds–15 minutes.
 
 ## Feedback
 

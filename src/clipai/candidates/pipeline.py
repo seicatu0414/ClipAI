@@ -21,6 +21,7 @@ from clipai.candidates.ranking import (
     relevant_knowledge,
 )
 from clipai.candidates.repository import CandidateRepository
+from clipai.candidates.scenes import build_scene_timeline
 from clipai.candidates.windowing import construct_windows, overlap_ratio, reduce_windows
 from clipai.events.domain import EventType, JsonValue
 from clipai.knowledge.provider import LlmProvider
@@ -62,7 +63,7 @@ class CandidatePipeline:
             windows = construct_windows(
                 self._repository.load_events(job),
                 minimum_seconds=_number(config, "minimum_seconds"),
-                maximum_seconds=_number(config, "maximum_seconds"),
+                maximum_seconds=_number(config, "anchor_maximum_seconds"),
                 padding_before_seconds=_number(config, "padding_before_seconds"),
                 padding_after_seconds=_number(config, "padding_after_seconds"),
                 merge_gap_seconds=_number(config, "merge_gap_seconds"),
@@ -76,6 +77,8 @@ class CandidatePipeline:
             indexed_knowledge = self._repository.load_knowledge(job)
             knowledge_ids = {item: identity for identity, item in indexed_knowledge}
             observations = tuple(item for _, item in indexed_knowledge)
+            all_segments = self._repository.all_segments(job.transcript_id)
+            scene_timeline = build_scene_timeline(all_segments)
             provider = self._provider_factory(job)
             ranker = LlmCandidateRanker(
                 provider,
@@ -89,7 +92,7 @@ class CandidatePipeline:
                     (
                         self._prompt_root
                         / "end_boundary_ranking"
-                        / f"{job.prompt_version}.md"
+                        / f"{_string(config, 'end_boundary_prompt_version')}.md"
                     ).read_text(encoding="utf-8"),
                 )
             )
@@ -103,21 +106,26 @@ class CandidatePipeline:
                     *(_EVENT_CATEGORIES[item.event_type] for item in window.events)
                 )
                 knowledge = relevant_knowledge(observations, categories, maximum)
-                context_seconds = _number(config, "context_window_seconds")
-                anchor = sum(
-                    (item.start_seconds + item.end_seconds) / 2
-                    for item in window.events
-                ) / len(window.events)
-                context = self._repository.segments_for(
-                    job.transcript_id,
-                    max(0.0, anchor - context_seconds / 2),
-                    anchor + context_seconds / 2,
-                )
                 selection = end_detector.detect(
-                    window, context, knowledge,
+                    window,
+                    all_segments,
+                    knowledge,
                     minimum_seconds=_number(config, "minimum_seconds"),
                     maximum_seconds=_number(config, "maximum_seconds"),
                     candidate_count=_integer(config, "end_boundary_count"),
+                    context_window_seconds=_number(
+                        config, "context_window_seconds"
+                    ),
+                    maximum_context_seconds=_number(
+                        config, "maximum_context_seconds"
+                    ),
+                    context_expansion_seconds=_number(
+                        config, "context_expansion_seconds"
+                    ),
+                    detailed_confidence_threshold=_number(
+                        config, "detailed_analysis_confidence"
+                    ),
+                    timeline=scene_timeline,
                 )
                 bounded_window = CandidateWindow(
                     window.start_seconds,
@@ -127,7 +135,7 @@ class CandidatePipeline:
                 )
                 segments = [
                     item
-                    for item in context
+                    for item in all_segments
                     if item.end_seconds >= bounded_window.start_seconds
                     and item.start_seconds <= bounded_window.end_seconds
                 ]
@@ -218,4 +226,11 @@ def _integer(configuration: dict[str, JsonValue], key: str) -> int:
     value = configuration.get(key)
     if not isinstance(value, int) or isinstance(value, bool):
         raise ValueError(f"candidate configuration {key!r} must be an integer")
+    return value
+
+
+def _string(configuration: dict[str, JsonValue], key: str) -> str:
+    value = configuration.get(key)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"candidate configuration {key!r} must be a string")
     return value

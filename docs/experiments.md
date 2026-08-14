@@ -22,9 +22,11 @@ StreamerKnowledge improves candidate acceptance compared with a generic highligh
 
 Cheap audio, transcript, and metadata signals can reduce LLM workload without unacceptable loss of strong moments.
 
-### H3 — Variable Duration
+### H3 — Scene-Aware Variable Duration
 
-Variable windows between approximately 15 and 120 seconds preserve setup and payoff better than fixed 30- or 60-second clips.
+Scene-aware windows between 15 seconds and a 15-minute hard maximum preserve causal
+setup, payoff, reaction, and aftermath better than fixed 30/60-second windows or the old
+120-second cap, without padding already-complete short Scenes.
 
 ### H4 — Feedback
 
@@ -91,10 +93,20 @@ Keep failed experiments; they prevent repeated dead ends.
 
 For a representative four-hour stream, record candidate count, duration distribution,
 pairwise overlap rate, and category distribution from the candidate-job results. The
-baseline succeeds when it yields 20–30 reviewable candidates, every duration is 15–120
-seconds, explanations cite stored evidence, and no pair reaches the configured overlap
+baseline succeeds when it yields 20–30 reviewable candidates, every duration is between
+15 seconds and the 15-minute hard maximum, explanations cite stored Scene/thread evidence,
+and no pair reaches the configured overlap
 threshold. Compare by candidate job ID; pinned inputs and analysis-version metadata make
 each run reproducible. Human usefulness remains the deciding measure.
+
+## Scene Boundary Comparison
+
+For the same transcript and anchor Event, record old/new start and end, duration,
+TopicWindow, SceneWindow and phase, open/resolved threads, selected candidate, boundary
+confidence, Scene completion confidence, detailed-analysis usage, and reason. Include
+short, 2–5 minute, approximately 10-minute, and hard-limit examples. A change is accepted
+only when human review finds the causal Scene more complete without unnecessary following
+Scenes; low-confidence cases must show whether bounded context expansion improved certainty.
 
 ## v0.5 Feedback Comparison
 

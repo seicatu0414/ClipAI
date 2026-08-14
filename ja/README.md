@@ -58,10 +58,13 @@ ClipAIは、個人向けAI編集アシスタントのためのローカルファ
 `POST /v1/candidate-jobs`へ送り、`GET /v1/candidate-jobs/{job_id}`で進捗、
 `GET /v1/candidate-jobs/{job_id}/candidates`で結果を確認します。
 
-Workerは安価なイベント信号から15〜120秒の窓を構築して重複を除き、既定で25件を
-目標に削減します。LLMへ送るのは、関連する証拠付きStreamerKnowledgeを添えた
-削減後の候補だけです。結果には8種類のカテゴリスコア、総合順位、確信度、理由、
-イベントID、正確な解析バージョン情報が含まれます。
+Workerは安価なイベント信号からアンカーを作り、再利用可能なSemantic ChunkとScene
+Timelineを構築して、15秒〜15分以内の自然な候補を選びます。15分は目標ではなくHard
+Maximumです。Topic境界、Scene Phase、未解決の目的、リアクション、余韻、関連する
+StreamerKnowledgeから終了候補を3〜5件生成し、LLMはそのIDだけを順位付けします。
+低confidenceまたは未完了Sceneでは、初期10分Contextを5分単位で上限付き拡張し、
+詳細再順位付けを1回行います。結果にはScene、Open Thread、候補、理由、confidence、
+正確な解析バージョン情報が含まれます。
 
 ## v0.5 フィードバック学習
 

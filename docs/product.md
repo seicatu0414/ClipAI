@@ -48,11 +48,16 @@ The selection policy must remain configurable.
 A candidate:
 
 - has an AI-selected start and end,
-- is normally between 15 and 120 seconds,
+- is between 15 seconds and a hard maximum of 15 minutes,
 - contains a complete setup and payoff when possible,
 - includes category scores,
 - includes an overall score,
 - includes human-readable selection reasons.
+
+Natural Scene completion takes priority over compactness. Fifteen minutes is a safety
+limit, not a target: a Scene that completes in 30 seconds should not be padded, while a
+multi-minute setup, climax, reaction, and aftermath must not be cut at the former
+120-second limit.
 
 ## Highlight Categories
 

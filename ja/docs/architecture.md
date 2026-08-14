@@ -1,8 +1,14 @@
 # アーキテクチャ
 
-終了境界の精度改善では、Eventから既存の開始境界を作った後、設定可能な5〜10分の
-ContextWindowを複数シグナルでTopicWindowへ分割する。局所的な終了境界候補を3〜5件
-生成し、LLMは候補外の時刻を生成せず最適候補だけを選ぶ。ClipWindowは通常15〜120秒を維持する。
+終了境界の精度改善では、Eventから既存の開始境界を作った後、Transcript全体から
+再利用可能なSemantic ChunkとScene Timelineを構築します。設定可能な初期5〜10分の
+ContextWindowを複数シグナルでTopicWindowへ分割し、Event所属Scene、SETUP・
+DEVELOPMENT・CLIMAX・AFTERMATH・TRANSITIONのPhase、目的、Open/Resolved Thread、
+Reaction Stateを推定します。Scene/Topic境界、Thread解決、余韻、Transition、無音、
+文末から終了候補を3〜5件生成し、LLMは候補外の時刻を生成せず最適IDだけを選びます。
+低confidence・未完了・競合時だけContextを5分単位で上限付き拡張し、詳細再順位付けを
+1回行います。ClipWindowは15秒〜15分以内で、15分は目標ではなくHard Maximumです。
+Topicは題材、Sceneは導入・行動・結果・反応・余韻・遷移から成る因果系列として分離します。
 
 ## 初期環境
 
